@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unloop 5 | Behavioral Rewiring</title>
+    <style>
+        :root {
+            --primary: #0f172a; --accent: #3b82f6; --success: #10b981; --warning: #f59e0b;
+            --bg: #f8fafc; --card: #ffffff; --text: #334155; --border: #e2e8f0;
+        }
+        body { font-family: 'Inter', -apple-system, sans-serif; background: var(--bg); color: var(--text); padding: 20px; }
+        .container { max-width: 850px; margin: 0 auto; }
+        
+        /* Unloop 5 Branding */
+        header { text-align: center; margin-bottom: 40px; }
+        .logo-area { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 10px; }
+        .logo-circle { width: 12px; height: 12px; border: 3px solid var(--accent); border-radius: 50%; border-top-color: transparent; animation: spin 2s linear infinite; }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+        
+        h1 { font-size: 2.2rem; color: var(--primary); margin: 0; letter-spacing: -1px; }
+        .tagline { color: #64748b; font-size: 0.95rem; margin-top: 5px; }
+
+        .date-shifter { background: var(--card); padding: 12px 20px; border-radius: 30px; display: inline-flex; align-items: center; gap: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border: 1px solid var(--border); margin-top: 20px; }
+        input[type="date"] { border: none; font-weight: 700; color: var(--accent); outline: none; background: transparent; font-family: inherit; cursor: pointer; }
+
+        /* Habit Nodes */
+        .goal-card { background: var(--card); border-radius: 20px; border: 1px solid var(--border); padding: 24px; margin-top: 24px; transition: transform 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+        .goal-card:hover { transform: translateY(-2px); border-color: #cbd5e1; }
+        
+        .goal-title-input { width: 100%; border: none; font-size: 1.3rem; font-weight: 800; color: var(--primary); margin-bottom: 20px; outline: none; background: transparent; }
+        .input-group { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        
+        label { font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; gap: 5px; margin-bottom: 8px; }
+        .label-eff { color: var(--success); }
+        .label-res { color: var(--warning); }
+
+        textarea { width: 100%; min-height: 90px; padding: 15px; border: 1px solid #f1f5f9; border-radius: 12px; background: #f8fafc; font-family: inherit; font-size: 0.95rem; resize: none; box-sizing: border-box; transition: all 0.2s; }
+        textarea:focus { background: #fff; border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
+
+        .btn-group { display: flex; gap: 12px; margin-top: 40px; }
+        .btn { flex: 1; padding: 14px; border-radius: 12px; cursor: pointer; font-weight: 700; border: none; transition: 0.2s; font-size: 0.9rem; }
+        .btn-pdf { background: var(--primary); color: white; }
+        .btn-txt { background: #fff; color: var(--primary); border: 1px solid var(--border); }
+
+        /* Export view */
+        @media print {
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+            .goal-card { border: none; border-bottom: 2px solid #f1f5f9; page-break-inside: avoid; }
+            textarea { border: none; background: transparent; padding: 0; }
+        }
+        .print-only { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header class="no-print">
+        <div class="logo-area">
+            <div class="logo-circle"></div>
+            <h1>UNLOOP 5</h1>
+        </div>
+        <p class="tagline">Disconnect old patterns. Rewire five core intentions.</p>
+        
+        <div class="date-shifter">
+            <input type="date" id="current-date" onchange="render()">
+        </div>
+    </header>
+
+    <div id="goal-list"></div>
+
+    <div class="btn-group no-print">
+        <button class="btn btn-pdf" onclick="window.print()">📄 Save PDF Report</button>
+        <button class="btn btn-txt" onclick="downloadTXT()">📥 Download Full Log (.txt)</button>
+    </div>
+
+    <div id="print-header" class="print-only" style="text-align:center; margin-bottom:30px;">
+        <h1 style="color:#0f172a; margin-bottom:5px;">UNLOOP 5 - PROGRESS LOG</h1>
+        <div id="pdf-date-display" style="font-weight:bold; color:#3b82f6;"></div>
+    </div>
+</div>
+
+<script>
+    const storageKey = 'unloop5_data';
+    document.getElementById('current-date').value = new Date().toISOString().split('T')[0];
+
+    let db = JSON.parse(localStorage.getItem(storageKey)) || {};
+    let titles = JSON.parse(localStorage.getItem('unloop5_titles')) || ["Objective 1", "Objective 2", "Objective 3", "Objective 4", "Objective 5"];
+
+    function render() {
+        const date = document.getElementById('current-date').value;
+        if (!db[date]) db[date] = Array.from({ length: 5 }, () => ({ effort: "", resistance: "" }));
+        
+        const container = document.getElementById('goal-list');
+        container.innerHTML = '';
+        document.getElementById('pdf-date-display').innerText = "Report for: " + date;
+
+        db[date].forEach((data, i) => {
+            const card = document.createElement('div');
+            card.className = 'goal-card';
+            card.innerHTML = `
+                <input type="text" class="goal-title-input" value="${titles[i]}" onchange="saveTitle(${i}, this.value)">
+                <div class="input-group">
+                    <div>
+                        <label class="label-eff"><span>🌱</span> Positive Effort</label>
+                        <textarea oninput="saveData(${i}, 'effort', this.value)" placeholder="What did you build today?">${data.effort}</textarea>
+                    </div>
+                    <div>
+                        <label class="label-res"><span>🛡️</span> Pattern Breaker</label>
+                        <textarea oninput="saveData(${i}, 'resistance', this.value)" placeholder="What did you resist?">${data.resistance}</textarea>
+                    </div>
+                </div>
+            `;
+            container.appendChild(card);
+        });
+    }
+
+    function saveTitle(i, val) { titles[i] = val; localStorage.setItem('unloop5_titles', JSON.stringify(titles)); }
+    function saveData(i, field, val) {
+        const date = document.getElementById('current-date').value;
+        db[date][i][field] = val;
+        localStorage.setItem(storageKey, JSON.stringify(db));
+    }
+
+    function downloadTXT() {
+        let text = "UNLOOP 5 - ARCHIVE\n==================\n";
+        Object.keys(db).sort().forEach(d => {
+            text += `\nDATE: ${d}\n`;
+            db[d].forEach((entry, i) => {
+                text += `[${titles[i]}]\n   Effort: ${entry.effort || 'None'}\n   Resisted: ${entry.resistance || 'None'}\n`;
+            });
+        });
+        const blob = new Blob([text], { type: 'text/plain' });
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'unloop5-history.txt'; a.click();
+    }
+
+    render();
+</script>
+</body>
+</html>
